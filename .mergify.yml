@@ -1,0 +1,24 @@
+# Shared defaults for repositories that explicitly opt in with: extends: .github
+# Local rules with the same name and explicit local settings take precedence.
+# This shares policy, not a cross-repository queue or additional runner capacity.
+merge_queue:
+  mode: serial
+  max_parallel_checks: 1
+  status_comments: outcomes
+
+queue_rules:
+  - name: default
+    batch_size: 1
+    branch_protection_injection_mode: queue
+    checks_timeout: 60 minutes
+    queue_conditions:
+      - -draft
+    # GitHub's required checks and reviews are injected for the actual base.
+    # No fixed branch/check names or bypass account: preserve each repo's gates.
+    # Omit merge_method so only a method authorized by the repo is selected.
+
+merge_protections_settings:
+  reporting_method: check-runs
+  post_comment: true
+  auto_merge_conditions:
+    - -draft
