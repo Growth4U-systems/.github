@@ -1,0 +1,56 @@
+# Growth4U: política común de entrada automática a la cola de merge.
+#
+# Los repos se acogen con `extends: .github` en su propio .mergify.yml. Mergify
+# carga este fichero primero y el del repo encima:
+#   - `merge_queue` y `merge_protections_settings` se fusionan clave a clave y
+#     la clave local gana;
+#   - una regla local con el mismo nombre (`default`) sustituye entera a la de
+#     aquí: un repo que declara sus checks reescribe la regla `default`
+#     completa y su propia lista `auto_merge_conditions`;
+#   - solo hay un nivel de herencia, así que este fichero no puede usar
+#     `extends`; y Mergify tiene que estar instalado en este repo (lo está, la
+#     instalación de la organización cubre todos los repos).
+#
+# Política (Martín, 8-sep-2026): un PR listo contra `main` entra solo en la
+# cola cuando sus checks están en verde y se mergea con squash; nadie tiene que
+# aprobar ni comentar. El sistema avisa, la persona decide. La única excepción
+# común son los bumps de Dependabot: conservan el checkbox de la cola, pero los
+# encola una persona.
+#
+# Sin ruleset ni CI propia, "en verde" significa "no draft": el PR se mergea
+# nada más abrirse como listo. Los repos con CI declaran sus checks en su
+# .mergify.yml. Si un repo añade un ruleset, Mergify inyecta aquí sus required
+# checks y aprobaciones sin tocar nada (branch_protection_injection_mode).
+
+merge_queue:
+  mode: serial
+  max_parallel_checks: 1
+  status_comments: outcomes
+
+queue_rules:
+  - name: default
+    # En serie, de uno en uno. Los repos con CI pesada sobrescriben la regla
+    # con batch_size: 5 para pagar la CI una vez por lote (ver alarife-payload).
+    batch_size: 1
+    merge_method: squash
+    # merge, no rebase: Mergify pone main al día en la rama del PR con un
+    # merge y no reescribe commits ajenos (nada de force-push en ramas de otros).
+    update_method: merge
+    checks_timeout: 60 minutes
+    branch_protection_injection_mode: queue
+    queue_conditions:
+      # Solo main: un PR apilado sobre otra rama (codex/*, instances/*) no se
+      # mergea solo en su base intermedia.
+      - base = main
+      - -draft
+
+merge_protections_settings:
+  reporting_method: check-runs
+  post_comment: true
+  # Entrada automática: lo que cumpla esto se encola solo (equivale a marcar
+  # "Queue this pull request"). Lo que no lo cumpla sigue pudiendo entrar a
+  # mano con el checkbox o `@mergifyio queue`.
+  auto_merge_conditions:
+    - base = main
+    - -draft
+    - author != dependabot[bot]
